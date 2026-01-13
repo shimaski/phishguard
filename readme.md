@@ -143,8 +143,8 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ##  Autor
 
 **Seu Nome**
-- GitHub: [@seu-usuario](https://github.com/shimaski/)
-- LinkedIn: [seu-perfil](https://www.linkedin.com/in/adrielshimaski/)
+- GitHub: [@shimaski](https://github.com/shimaski/)
+- LinkedIn: [Adriel Shimaski ](https://www.linkedin.com/in/adrielshimaski/)
 
 ##  Agradecimentos
 
