@@ -72,20 +72,25 @@ Você pode testar com estes exemplos de domínios suspeitos:
 
 ```
 phishguard/
-├── assets/              # Ícones e recursos visuais
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-├── scripts/             # Scripts da extensão
-│   ├── background.js    # Service Worker principal
-│   └── content.js       # Script de conteúdo
-├── popup/               # Interface do popup
-│   ├── popup.html
-│   ├── popup.css
-│   └── popup.js
-├── manifest.json        # Manifesto da extensão
-├── README.md            # Este arquivo
-└── LICENSE              # Licença MIT
+├── 📄 manifest.json 
+├── 📄 README.md
+├── 📄 LICENSE
+├── 📄 .gitignore
+├── 📁 assets/
+│ ├── 🖼️ icon16.png
+│ ├── 🖼️ icon48.png
+│ └── 🖼️ icon128.png
+├── 📁 scripts/
+│ ├── 📄 background.js 
+│ └── 📄 content.js 
+├── 📁 popup/
+│ ├── 📄 popup.html 
+│ ├── 📄 popup.css 
+│ └── 📄 popup.js 
+└── 📁 options/
+├── 📄 options.html 
+├── 📄 options.css 
+└── 📄 options.js 
 ```
 
 ##  Considerações de Segurança
