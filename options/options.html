@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PhishGuard Pro - Configurações</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛡️ PhishGuard Pro</h1>
+      <p class="subtitle">Configurações e Estatísticas</p>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="whitelist">📋 Whitelist</button>
+      <button class="tab" data-tab="stats">📊 Estatísticas</button>
+      <button class="tab" data-tab="api">🔑 API Config</button>
+    </nav>
+
+    <div id="whitelist-tab" class="tab-content active">
+      <h2>Gerenciar Whitelist</h2>
+      <div class="add-domain">
+        <input type="text" id="newDomain" placeholder="exemplo.com.br">
+        <button id="addDomain" class="btn-primary">➕ Adicionar</button>
+      </div>
+      <div class="whitelist-section">
+        <h3>Domínios Personalizados</h3>
+        <ul id="customWhitelist" class="domain-list"></ul>
+      </div>
+    </div>
+
+    <div id="stats-tab" class="tab-content">
+      <h2>Estatísticas</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="totalScans">0</div>
+          <div class="stat-label">Sites Analisados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="threatsBlocked">0</div>
+          <div class="stat-label">Ameaças Bloqueadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="safeSites">0</div>
+          <div class="stat-label">Sites Seguros</div>
+        </div>
+      </div>
+      <div id="threatList"></div>
+      <button id="exportStats" class="btn-secondary">📥 Exportar</button>
+    </div>
+
+    <div id="api-tab" class="tab-content">
+      <h2>Google Safe Browsing API</h2>
+      <div class="api-config">
+        <label>API Key:</label>
+        <input type="password" id="apiKey" placeholder="Cole sua API key">
+        <button id="saveApiKey" class="btn-primary">💾 Salvar</button>
+      </div>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

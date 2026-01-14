@@ -1,213 +1,120 @@
-// PhishGuard - Background Service Worker (Manifest V3)
+// PhishGuard Pro v2.0
+const CONFIG = {
+  SAFE_BROWSING_API_KEY: '', // Será configurado nas opções
+  CACHE_DURATION: 3600000
+};
 
-/* ===============================
-   CONFIGURAÇÕES
-================================ */
-const WHITELIST = new Set([
-    'google.com',
-    'github.com',
-    'paypal.com',
-    'amazon.com',
-    'microsoft.com',
-    'apple.com',
-    'twitter.com',
-    'facebook.com',
-    'linkedin.com',
-    'netflix.com',
-    'youtube.com',
-    'instagram.com',
-    'mercadolivre.com.br',
-    'bancodobrasil.com.br',
-    'itau.com.br'
+class StorageManager {
+  static async get(key, defaultValue = null) {
+    const result = await chrome.storage.local.get(key);
+    return result[key] || defaultValue;
+  }
+
+  static async set(key, value) {
+    await chrome.storage.local.set({ [key]: value });
+  }
+
+  static async getStats() {
+    return await this.get('stats', {
+      totalScans: 0,
+      threatsBlocked: 0,
+      safeSites: 0,
+      lastScan: null,
+      threatHistory: []
+    });
+  }
+
+  static async updateStats(isThreat, url, type) {
+    const stats = await this.getStats();
+    stats.totalScans++;
+    stats.lastScan = new Date().toISOString();
+    
+    if (isThreat) {
+      stats.threatsBlocked++;
+      stats.threatHistory.unshift({
+        url, timestamp: new Date().toISOString(), type
+      });
+      stats.threatHistory = stats.threatHistory.slice(0, 100);
+    } else {
+      stats.safeSites++;
+    }
+    
+    await this.set('stats', stats);
+  }
+
+  static async getCustomWhitelist() {
+    return await this.get('customWhitelist', []);
+  }
+
+  static async addToWhitelist(domain) {
+    const whitelist = await this.getCustomWhitelist();
+    if (!whitelist.includes(domain)) {
+      whitelist.push(domain);
+      await this.set('customWhitelist', whitelist);
+    }
+  }
+}
+
+const DEFAULT_WHITELIST = new Set([
+  'google.com', 'github.com', 'paypal.com', 'amazon.com',
+  'mercadolivre.com.br', 'bancodobrasil.com.br', 'itau.com.br'
 ]);
 
-/* ===============================
-   HOMOGLYPHS
-================================ */
 const HOMOGLYPHS = {
-    a: ['а', 'α'],
-    c: ['с', 'ϲ'],
-    e: ['е'],
-    i: ['і'],
-    o: ['о', 'ο'],
-    p: ['р'],
-    y: ['у']
+  'a': ['а', 'α'], 'c': ['с', 'ϲ'], 'e': ['е'],
+  'i': ['і'], 'o': ['о', 'ο'], 'p': ['р']
 };
 
-const COMBINATION_GLYPHS = {
-    rn: 'm',
-    vv: 'w',
-    cl: 'd'
-};
-
-/* ===============================
-   SCRIPT RANGES (UNICODE)
-================================ */
-const SCRIPT_REGEX = {
-    LATIN: /[a-zA-Z]/,
-    CYRILLIC: /[\u0400-\u04FF]/,
-    GREEK: /[\u0370-\u03FF]/
-};
-
-/* ===============================
-   LEVENSHTEIN
-================================ */
-function levenshtein(a, b) {
-    const dp = Array.from({ length: a.length + 1 }, () =>
-        Array(b.length + 1).fill(0)
-    );
-
-    for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            dp[i][j] = Math.min(
-                dp[i - 1][j] + 1,
-                dp[i][j - 1] + 1,
-                dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-            );
-        }
+function checkHomoglyphs(domain) {
+  const results = [];
+  for (let i = 0; i < domain.length; i++) {
+    const char = domain[i];
+    for (const [latin, variants] of Object.entries(HOMOGLYPHS)) {
+      if (variants.includes(char)) {
+        results.push({ position: i, original: latin, found: char });
+      }
     }
-    return dp[a.length][b.length];
+  }
+  return results.length > 0 ? results : false;
 }
 
-/* ===============================
-   DETECÇÃO DE SCRIPTS MISTOS
-================================ */
-function detectMixedScripts(domain) {
-    const scripts = new Set();
-
-    for (const char of domain) {
-        for (const [name, regex] of Object.entries(SCRIPT_REGEX)) {
-            if (regex.test(char)) scripts.add(name);
-        }
-    }
-    return scripts.size > 1 ? [...scripts] : null;
+async function analyzeDomain(url) {
+  const cleanDomain = url.replace(/^https?:\/\//, '').split('/')[0];
+  const results = {
+    original: url,
+    homoglyphs: checkHomoglyphs(cleanDomain),
+    timestamp: new Date().toISOString()
+  };
+  
+  const isThreat = results.homoglyphs;
+  await StorageManager.updateStats(isThreat, url, 'homoglyph');
+  
+  return results;
 }
 
-/* ===============================
-   DETECÇÃO DE HOMOGLYPHS
-================================ */
-function detectHomoglyphs(domain) {
-    const findings = [];
-
-    [...domain].forEach((char, index) => {
-        for (const [latin, variants] of Object.entries(HOMOGLYPHS)) {
-            if (variants.includes(char)) {
-                findings.push({
-                    type: 'homoglyph',
-                    found: char,
-                    original: latin,
-                    position: index
-                });
-            }
-        }
-    });
-
-    return findings;
-}
-
-/* ===============================
-   DETECÇÃO DE COMBINAÇÕES
-================================ */
-function detectCombinationGlyphs(domain) {
-    const findings = [];
-
-    for (const [combo, real] of Object.entries(COMBINATION_GLYPHS)) {
-        let pos = domain.indexOf(combo);
-        while (pos !== -1) {
-            findings.push({
-                type: 'combination',
-                found: combo,
-                original: real,
-                position: pos
-            });
-            pos = domain.indexOf(combo, pos + 1);
-        }
-    }
-
-    return findings;
-}
-
-/* ===============================
-   SIMILARIDADE COM WHITELIST
-================================ */
-function checkWhitelist(domain) {
-    const base = domain.split('.').slice(-2).join('.');
-    let closest = null;
-    let min = Infinity;
-
-    for (const safe of WHITELIST) {
-        const d = levenshtein(base, safe);
-        if (d > 0 && d <= 2 && d < min) {
-            min = d;
-            closest = safe;
-        }
-    }
-
-    return closest ? { match: closest, distance: min } : null;
-}
-
-/* ===============================
-   ANÁLISE PRINCIPAL
-================================ */
-function analyzeUrl(url) {
-    let hostname;
-
-    try {
-        hostname = new URL(url).hostname;
-    } catch {
-        return { risk: false };
-    }
-
-    const isPunycode = hostname.startsWith('xn--');
-    const normalized = hostname.normalize('NFKC');
-
-    const homoglyphs = [
-        ...detectHomoglyphs(normalized),
-        ...detectCombinationGlyphs(normalized)
-    ];
-
-    const mixedScripts = detectMixedScripts(normalized);
-    const whitelistMatch = checkWhitelist(normalized);
-
-    const risk = Boolean(
-        homoglyphs.length ||
-        mixedScripts ||
-        whitelistMatch ||
-        isPunycode
-    );
-
-    return {
-        url,
-        hostname,
-        isPunycode,
-        homoglyphs: homoglyphs.length ? homoglyphs : null,
-        mixedScripts,
-        whitelistMatch,
-        risk
-    };
-}
-
-/* ===============================
-   MESSAGE HANDLER (MV3 SAFE)
-================================ */
-chrome.runtime.onMessage.addListener((request) => {
-    if (request.type !== 'analyze') return;
-
-    const result = analyzeUrl(request.url);
-
-    chrome.storage.local.set({ scanResult: result });
-
-    if (result.risk) {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'analyze') {
+    analyzeDomain(request.url).then(result => {
+      if (result.homoglyphs) {
         chrome.action.setBadgeText({ text: '!' });
-        chrome.action.setBadgeBackgroundColor({ color: '#D32F2F' });
-        chrome.action.setTitle({ title: 'PhishGuard - Threat detected' });
-    } else {
+        chrome.action.setBadgeBackgroundColor({ color: '#FF0000' });
+      } else {
         chrome.action.setBadgeText({ text: '' });
-        chrome.action.setTitle({ title: 'PhishGuard - Safe' });
-    }
-
-    return Promise.resolve({ result });
+      }
+      sendResponse({ result });
+    });
+    return true;
+  }
+  
+  if (request.type === 'getStats') {
+    StorageManager.getStats().then(sendResponse);
+    return true;
+  }
+  
+  if (request.type === 'addToWhitelist') {
+    StorageManager.addToWhitelist(request.domain).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
 });

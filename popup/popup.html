@@ -1,19 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>PhishGuard</title>
-    <link rel="stylesheet" href="popup.css">
+  <meta charset="UTF-8">
+  <title>PhishGuard Pro</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🛡️ PhishGuard</h1>
-        <div class="status" id="status">Analisando página...</div>
-        <div class="results" id="results"></div>
-        <div class="actions">
-            <button id="scan">🔄 Reescanear</button>
-        </div>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ PhishGuard Pro</h1>
+      <div class="version">v2.0</div>
     </div>
-    <script src="popup.js"></script>
+    
+    <div class="status" id="status">Analisando...</div>
+    <div class="results" id="results"></div>
+    
+    <div class="actions">
+      <button id="scan" class="btn-primary">🔄 Reescanear</button>
+      <button id="stats" class="btn-secondary">📊 Estatísticas</button>
+    </div>
+    
+    <div class="learning-actions">
+      <button id="falsePositive" class="btn-fp">✅ Falso Positivo</button>
+      <button id="confirmThreat" class="btn-ct">🚨 Confirmar Ameaça</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
 </body>
 </html>
